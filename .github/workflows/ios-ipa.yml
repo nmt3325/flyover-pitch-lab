@@ -1,0 +1,38 @@
+name: Build iOS and iPadOS unsigned IPA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ios-ipa.yml"
+      - "project.yml"
+      - "iOS/**"
+      - "Sources/FlyoverPitchLabIOS/**"
+      - "Sources/FlyoverPitchLab/MapModel.swift"
+      - "scripts/build-ios-ipa.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unsigned-ipa:
+    name: iOS device (arm64, Xcode 27)
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v4
+      - name: Environment
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Compile and package unsigned IPA
+        run: bash scripts/build-ios-ipa.sh
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlyoverPitchLab-iOS-iPadOS-unsigned
+          path: dist/FlyoverPitchLab-iOS-iPadOS-unsigned.ipa
+          retention-days: 30
+          if-no-files-found: error
