@@ -5,6 +5,7 @@ struct ContentView: View {
     @StateObject private var model = MapModel()
     @StateObject private var diagnostics = DiagnosticLogger.shared
     @StateObject private var autoTest = AutoDiagnosticController.shared
+    @StateObject private var probe = CameraConstraintProbe.shared
     @State private var exportURL: URL?
     @State private var isSharing = false
 
@@ -37,7 +38,11 @@ struct ContentView: View {
 
     private var mapArea: some View {
         ZStack(alignment: .topLeading) {
-            FlyoverMapView(model: model)
+            if probe.showSwiftUI {
+                SwiftUIMapPitchProbeView()
+            } else {
+                FlyoverMapView(model: model)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text("FLYOVER PITCH LAB").font(.caption.weight(.bold))
                 Text("Pinch / drag / rotate; apply a camera below")
@@ -71,7 +76,7 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .disabled(autoTest.isRunning)
+                .disabled(autoTest.isRunning || probe.isRunning)
 
                 GroupBox("場所") {
                     VStack(spacing: 8) {
@@ -92,7 +97,7 @@ struct ContentView: View {
                         .font(.system(.footnote, design: .monospaced))
                     }
                 }
-                .disabled(autoTest.isRunning)
+                .disabled(autoTest.isRunning || probe.isRunning)
 
                 GroupBox("指定カメラ") {
                     VStack(spacing: 11) {
@@ -115,7 +120,7 @@ struct ContentView: View {
                         .font(.footnote)
                     }
                 }
-                .disabled(autoTest.isRunning)
+                .disabled(autoTest.isRunning || probe.isRunning)
 
                 GroupBox("実測（MKMapView.camera）") {
                     VStack(spacing: 8) {
@@ -174,7 +179,7 @@ struct ContentView: View {
                                 autoTest.start(model: model)
                             }
                             .buttonStyle(.borderedProminent)
-                            .disabled(autoTest.isRunning)
+                            .disabled(autoTest.isRunning || probe.isRunning)
                             if autoTest.isRunning {
                                 Button("中断") { autoTest.cancel() }
                                     .tint(.orange)
@@ -212,6 +217,64 @@ struct ContentView: View {
                             }
                         }
                         Text("最大値は今回の試験条件で観測した値です。3DGS対応、サーバー側制限の有無は判定できません。CSVは各ステップ完了時に端末へ保存されます。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+
+                GroupBox("Pitch制限の突破検証：3つのカメラAPI") {
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text("6距離 × 3手法 = 18件。距離＋角度、視点座標＋高度、SwiftUI Mapを同一地点・89°要求で比較します。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text("距離: 50 / 200 / 500 / 1200 / 3000 / 10000m")
+                            .font(.caption2)
+                            .monospacedDigit()
+                        HStack(spacing: 9) {
+                            Button("3方式を自動比較") {
+                                probe.start(model: model, otherSweepRunning: autoTest.isRunning)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(probe.isRunning || autoTest.isRunning)
+                            if probe.isRunning {
+                                Button("中断") { probe.stop() }
+                            }
+                        }
+                        if probe.isRunning {
+                            ProgressView(value: Double(probe.progress), total: Double(max(probe.total, 1)))
+                            Text("\(probe.progress)/\(probe.total)件")
+                                .font(.caption.monospacedDigit())
+                        }
+                        Text(probe.status)
+                            .font(.caption)
+                            .textSelection(.enabled)
+                        if probe.csvURL != nil {
+                            Button("比較結果CSVを共有") {
+                                exportURL = probe.exportCSV()
+                                isSharing = exportURL != nil
+                            }
+                            .font(.footnote)
+                        }
+                        if !probe.samples.isEmpty {
+                            Divider()
+                            ForEach(probe.samples.suffix(12)) { sample in
+                                HStack(spacing: 6) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(sample.path.rawValue)
+                                            .font(.caption2)
+                                        Text("\(Int(sample.requestedDistance))m · 生成時 \(String(format:"%.1f°", sample.constructorPitch))")
+                                            .font(.caption2.monospacedDigit())
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(sample.settledPitch.map { String(format: "%.1f°", $0) } ?? "未取得")
+                                        .font(.footnote.monospacedDigit().bold())
+                                }
+                            }
+                        }
+                        Text("生成時・適用直後・描画時・安定後を記録。SwiftUI Mapには公開された個別描画完了通知がないため、カメラ変更通知を利用します。値が変わらなければ別経路でも制約がある可能性が高まります。")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }

@@ -98,3 +98,30 @@ include \`AUTOTEST.STEP_REQUESTED\` and \`AUTOTEST.STEP_RESULT\` events.
 the tested requests, capped by the 89° test. It is not proof of the global
 maximum or a direct measurement of Apple's server quotas, tile transfer
 status, or 3DGS use. A lack of tile render callbacks can mean cached imagery.
+
+
+## Three-API camera constraint comparison
+
+The iPhone/iPad UI includes **Pitch制限の突破検証：3つのカメラAPI**.
+Tap **3方式を自動比較**. It compares 18 tests at fixed location/heading:
+
+- \`MKMapCamera(lookingAtCenter:fromDistance:pitch:heading:)\`
+- \`MKMapCamera(lookingAtCenter:fromEyeCoordinate:eyeAltitude:)\` with an eye location and altitude chosen for an approximately 89° sightline
+- A separate **SwiftUI \`Map(position:)\`** using \`MapCamera(centerCoordinate:distance:heading:pitch:)\` and \`.onMapCameraChange(frequency: .continuous)\`
+
+Distances: 50, 200, 500, 1200, 3000 and 10000 meters. Each requests
+89° (eye coordinate method is geometrically estimated) and records the
+constructed pitch, immediate applied pitch and settled pitch. UIKit MapKit
+additionally records the last render callback pitch when available; SwiftUI
+MapCamera does not expose a public per-tile rendering completion callback.
+
+All measurements are logged as \`PITCH_PROBE.*\` JSONL entries and written
+row-by-row to \`Documents/FlyoverPitchLab/CameraConstraintProbe-latest.csv\`.
+Use **比較結果CSVを共有** to export; previous CSV can be exported after relaunch
+if a LiveContainer guest was terminated mid-run. The probe can be cancelled.
+
+This **does not bypass Apple's camera safeguards**, use private APIs, or
+prove 3DGS availability. The goal is to locate whether the clamping occurs
+during camera creation, map assignment or rendering. SwiftUI \`Map\`
+uses realistic imagery rather than necessarily the same exact legacy
+satelliteFlyover renderer, so its results are not a perfect renderer-level A/B.

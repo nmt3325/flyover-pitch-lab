@@ -26,11 +26,12 @@ struct FlyoverMapView: UIViewRepresentable {
         context.coordinator.lastRevision = model.revision
         context.coordinator.lastMode = model.mode
         AutoDiagnosticController.shared.register(map)
+        CameraConstraintProbe.shared.register(map)
         return map
     }
 
     func updateUIView(_ map: MKMapView, context: Context) {
-        if AutoDiagnosticController.shared.isRunning { return }
+        if AutoDiagnosticController.shared.isRunning || CameraConstraintProbe.shared.isRunning { return }
         let coordinator = context.coordinator
         if coordinator.lastMode != model.mode {
             coordinator.setMode(model.mode, on: map)
@@ -46,6 +47,7 @@ struct FlyoverMapView: UIViewRepresentable {
 
     static func dismantleUIView(_ uiView: MKMapView, coordinator: Coordinator) {
         AutoDiagnosticController.shared.unregister(uiView)
+        CameraConstraintProbe.shared.unregister(uiView)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
@@ -111,6 +113,7 @@ struct FlyoverMapView: UIViewRepresentable {
 
         func mapViewDidFinishRenderingMap(_ mapView: MKMapView, fullyRendered: Bool) {
             diagnostics.renderingFinished(completely: fullyRendered)
+            CameraConstraintProbe.shared.noteMKRendering(mapView)
             readCamera(mapView, force: true)
         }
 
