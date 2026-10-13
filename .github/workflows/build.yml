@@ -1,0 +1,38 @@
+name: Build macOS app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: xcode-27
+            label: arm64-xcode27
+          - runner: macos-26-intel
+            label: x86_64-xcode26
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show build environment
+        run: |
+          uname -a
+          xcodebuild -version
+          swift --version
+      - name: Compile, package, ad-hoc sign, and archive
+        run: bash scripts/bundle-app.sh "${{ matrix.label }}"
+      - name: Upload macOS .app ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlyoverPitchLab-${{ matrix.label }}
+          path: dist/FlyoverPitchLab-${{ matrix.label }}.zip
+          retention-days: 30
+          if-no-files-found: error
