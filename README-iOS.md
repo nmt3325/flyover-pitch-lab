@@ -43,3 +43,29 @@ The output is `dist/FlyoverPitchLab-iOS-iPadOS-unsigned.ipa`. GitHub Actions use
 - Matching Apple Maps visually does not prove 3DGS; a private Apple renderer or data format cannot be inferred from `MKMapView.camera`.
 - LiveContainer may have compatibility constraints unrelated to Apple Maps or entitlements; the app has not been tested on a physical iOS 27 device.
 - No private APIs, no exporting Apple Maps data, and no unusual entitlements.
+
+
+## On-device detailed diagnostics (LiveContainer friendly)
+
+The iOS/iPadOS app now saves structured UTF-8 **JSONL** records locally to
+\`Documents/FlyoverPitchLab/diagnostics-current.jsonl\`; files rotate through
+\`diagnostics-previous.jsonl\` and \`diagnostics-older.jsonl\` at 4 MiB each.
+Nothing uploads automatically.
+
+Open **詳細診断ログ** in the controls pane, then tap **全ログを共有** to export
+all retained JSONL events through the share sheet, or **表示ログをコピー**
+to paste recent human-readable entries.
+
+Events include MapKit start/success/failure loading callbacks with \`NSError\`
+domain/code, tile rendering start/completion and \`fullyRendered\`, camera
+requests and readback (clamp deltas), location, heading, range, app state,
+network interface/connectivity, power/thermal and a watchdog for long loads.
+Camera changes are sampled at most four times per second; detailed file
+entries at most once per second during map gestures. This is a rolling
+log with explicit timestamps and no arbitrary error.userInfo dump.
+
+**Interpretation caveat:** Apple's public MapKit API cannot report server
+rate-limit/account quota status, 3DGS availability or raw tile HTTP responses.
+A map loading failure or \`fullyRendered=false\` is evidence of a rendering
+problem but not direct evidence of a limit. LiveContainer guest-sandbox access
+to Documents via Files can vary; use the in-app share/copy controls first.

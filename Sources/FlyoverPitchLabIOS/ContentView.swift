@@ -3,6 +3,9 @@ import UIKit
 
 struct ContentView: View {
     @StateObject private var model = MapModel()
+    @StateObject private var diagnostics = DiagnosticLogger.shared
+    @State private var exportURL: URL?
+    @State private var isSharing = false
 
     var body: some View {
         GeometryReader { geometry in
@@ -22,6 +25,11 @@ struct ContentView: View {
                     controls
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+            }
+        }
+        .sheet(isPresented: $isSharing) {
+            if let exportURL {
+                DiagnosticsShareSheet(items: [exportURL])
             }
         }
     }
@@ -135,6 +143,64 @@ struct ContentView: View {
                         .font(.footnote)
                     }
                 }
+
+                GroupBox("詳細診断ログ（端末内保存）") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("イベント \(diagnostics.eventCount)")
+                            Spacer()
+                            Text("エラー \(diagnostics.errorCount)")
+                            Spacer()
+                            Text("描画 \(diagnostics.renderCount)")
+                        }
+                        .font(.footnote.monospacedDigit())
+                        Text("通信: \(diagnostics.networkState)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        if let complete = diagnostics.fullyRendered {
+                            Text(complete ? "直近の可視タイル描画: 完了" : "直近の可視タイル描画: 不完全")
+                                .font(.caption)
+                                .foregroundStyle(complete ? .green : .orange)
+                        }
+                        if diagnostics.lastError != "None" {
+                            Text("直近エラー: \(diagnostics.lastError)")
+                                .font(.caption2)
+                                .foregroundStyle(.red)
+                                .textSelection(.enabled)
+                        }
+                        HStack {
+                            Button("全ログを共有") {
+                                exportURL = diagnostics.exportLog()
+                                isSharing = exportURL != nil
+                            }
+                            .buttonStyle(.borderedProminent)
+                            Button("表示ログをコピー") {
+                                UIPasteboard.general.string = diagnostics.copyableText()
+                                diagnostics.log("APP", "COPIED_VISIBLE_LOG")
+                            }
+                        }
+                        .font(.footnote)
+                        Button("ログを消去") {
+                            diagnostics.clearLog()
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        DisclosureGroup("直近ログを見る") {
+                            ScrollView(.vertical) {
+                                Text(diagnostics.recentLines.suffix(80).joined(separator: "\n"))
+                                    .font(.system(size: 9, design: .monospaced))
+                                    .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .frame(height: 190)
+                        }
+                        .font(.footnote)
+                        Text("ログは端末内のJSONLに保存。MapKitの内部HTTPステータス・サーバー側利用制限・3DGS形式は公開APIから直接取得できません。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .padding(13)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -187,4 +253,15 @@ struct ContentView: View {
         }
         .font(.footnote)
     }
+}
+
+
+private struct DiagnosticsShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
