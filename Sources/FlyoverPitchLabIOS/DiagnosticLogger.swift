@@ -79,7 +79,7 @@ final class DiagnosticLogger: ObservableObject {
             (UIApplication.willResignActiveNotification, "WILL_RESIGN_ACTIVE"),
             (UIApplication.didEnterBackgroundNotification, "DID_ENTER_BACKGROUND"),
             (UIApplication.willEnterForegroundNotification, "WILL_ENTER_FOREGROUND"),
-            (ProcessInfo.powerStateDidChangeNotification, "POWER_STATE_CHANGED"),
+            (Notification.Name.NSProcessInfoPowerStateDidChange, "POWER_STATE_CHANGED"),
             (ProcessInfo.thermalStateDidChangeNotification, "THERMAL_STATE_CHANGED")
         ]
         for (name, event) in events {
