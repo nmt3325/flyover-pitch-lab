@@ -1,5 +1,7 @@
 # Flyover Pitch Lab
 
+> **iPhone / iPad (iOS & iPadOS 27):** The unsigned IPA is now built automatically on GitHub Actions. **[Download the iOS/iPadOS artifact](https://github.com/nmt3325/flyover-pitch-lab/actions/workflows/ios-ipa.yml)** and see **[LiveContainer installation and iOS usage](README-iOS.md)**. No Apple Developer paid account, Maps routing entitlement, or provisioning profile is required to compile. The guest is not yet physical-device tested.
+
 A tiny **native macOS MapKit viewer** for testing whether Apple Maps Flyover allows near-horizontal (pitch 85–90°) camera angles and whether the imagery looks like the latest Enhanced Flyover/3DGS experience.
 
 **This does not extract Apple Maps geometry and does not claim that MapKit exposes the new 3DGS data.** It deliberately compares *requested* versus *read-back* camera values.
