@@ -180,7 +180,7 @@ struct ContentView: View {
                                     .tint(.orange)
                             }
                         }
-                        if !autoTest.samples.isEmpty {
+                        if autoTest.lastCSVURL != nil {
                             Button("診断結果CSVを共有") {
                                 exportURL = autoTest.exportCSV()
                                 isSharing = exportURL != nil
