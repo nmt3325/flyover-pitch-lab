@@ -56,6 +56,15 @@ final class AutoDiagnosticController: ObservableObject {
     private var backgroundObserver: NSObjectProtocol?
 
     private init() {
+        // A LiveContainer guest may be terminated mid-sweep. Keep any CSV
+        // written by prior measurements available for export after relaunch.
+        let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("FlyoverPitchLab", isDirectory: true)
+        let saved = folder.appendingPathComponent("AutoDiagnostic-latest.csv")
+        if FileManager.default.fileExists(atPath: saved.path) {
+            lastCSVURL = saved
+            status = "保存済みの診断CSVがあります（前回分）"
+        }
         backgroundObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil, queue: .main
