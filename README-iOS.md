@@ -69,3 +69,32 @@ rate-limit/account quota status, 3DGS availability or raw tile HTTP responses.
 A map loading failure or \`fullyRendered=false\` is evidence of a rendering
 problem but not direct evidence of a limit. LiveContainer guest-sandbox access
 to Documents via Files can vary; use the in-app share/copy controls first.
+
+
+## Automatic Flyover camera diagnostic sweep
+
+The **自動診断：最大Pitchと描画状況** group on iPhone/iPad runs a
+**54-measurement sweep** for all combinations of:
+
+- Renderer: Satellite Flyover, Hybrid Flyover, Realistic Imagery
+- Camera distance: 50, 200, 500, 1,200, 3,000 and 10,000 meters
+- Requested pitch: 60°, 75° and 89°
+
+The app holds one location and heading constant, applies each camera through
+public MapKit, waits for camera settling (and briefly for a render callback),
+then records *actual* camera pitch/distance/altitude/heading, rendering
+callbacks, app-visible loading starts and error count, and elapsed time.
+
+**Start** from the on-screen control and keep the app in the foreground;
+**中断** cancels without losing completed rows. UI controls are disabled
+during the sweep and the original renderer/camera are restored after it.
+Results appear in the app per renderer/distance and can be shared using
+**診断結果CSVを共有**. A full row-by-row CSV is saved after every test to
+\`Documents/FlyoverPitchLab/AutoDiagnostic-latest.csv\`, so results survive
+an interrupted LiveContainer guest. The earlier JSONL diagnostics also
+include \`AUTOTEST.STEP_REQUESTED\` and \`AUTOTEST.STEP_RESULT\` events.
+
+**What a measured maximum means:** the highest *observed* pitch among
+the tested requests, capped by the 89° test. It is not proof of the global
+maximum or a direct measurement of Apple's server quotas, tile transfer
+status, or 3DGS use. A lack of tile render callbacks can mean cached imagery.

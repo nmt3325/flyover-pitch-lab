@@ -4,6 +4,7 @@ import UIKit
 struct ContentView: View {
     @StateObject private var model = MapModel()
     @StateObject private var diagnostics = DiagnosticLogger.shared
+    @StateObject private var autoTest = AutoDiagnosticController.shared
     @State private var exportURL: URL?
     @State private var isSharing = false
 
@@ -70,6 +71,7 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .disabled(autoTest.isRunning)
 
                 GroupBox("場所") {
                     VStack(spacing: 8) {
@@ -90,6 +92,7 @@ struct ContentView: View {
                         .font(.system(.footnote, design: .monospaced))
                     }
                 }
+                .disabled(autoTest.isRunning)
 
                 GroupBox("指定カメラ") {
                     VStack(spacing: 11) {
@@ -112,6 +115,7 @@ struct ContentView: View {
                         .font(.footnote)
                     }
                 }
+                .disabled(autoTest.isRunning)
 
                 GroupBox("実測（MKMapView.camera）") {
                     VStack(spacing: 8) {
@@ -142,6 +146,76 @@ struct ContentView: View {
                         }
                         .font(.footnote)
                     }
+                }
+
+
+                GroupBox("自動診断：最大Pitchと描画状況") {
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text("同一地点で3描画方式 × 6距離 × 3角度（60°/75°/89°）、合計54件を自動測定します。測定中は操作せず、アプリを前面に保持してください。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        if autoTest.isRunning {
+                            ProgressView(value: Double(autoTest.progress),
+                                         total: Double(max(autoTest.totalSteps, 1)))
+                            Text("進捗 \(autoTest.progress)/\(autoTest.totalSteps)")
+                                .font(.footnote.monospacedDigit())
+                            if let mode = autoTest.currentMode,
+                               let distance = autoTest.currentDistance,
+                               let pitch = autoTest.currentRequestedPitch {
+                                Text("\(mode.rawValue) / \(Int(distance)) m / \(Int(pitch))°")
+                                    .font(.caption2)
+                            }
+                        }
+                        Text(autoTest.status)
+                            .font(.caption)
+                            .textSelection(.enabled)
+                        HStack {
+                            Button("自動診断を開始") {
+                                autoTest.start(model: model)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(autoTest.isRunning)
+                            if autoTest.isRunning {
+                                Button("中断") { autoTest.cancel() }
+                                    .tint(.orange)
+                            }
+                        }
+                        if !autoTest.samples.isEmpty {
+                            Button("診断結果CSVを共有") {
+                                exportURL = autoTest.exportCSV()
+                                isSharing = exportURL != nil
+                            }
+                            .font(.footnote)
+                        }
+                        if !autoTest.groupResults.isEmpty {
+                            Divider()
+                            Text("測定できた最大Pitch（各距離・方式）")
+                                .font(.footnote.weight(.semibold))
+                            ForEach(autoTest.groupResults) { result in
+                                HStack(alignment: .firstTextBaseline) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(result.mode.rawValue)
+                                            .font(.caption2)
+                                        Text("\(Int(result.distance)) m / \(result.trials)件")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(String(format: "%.1f°", result.maxObserved))
+                                        .font(.footnote.monospacedDigit().bold())
+                                    if let at89 = result.at89 {
+                                        Text(String(format: "(89°→%.1f°)", at89))
+                                            .font(.caption2.monospacedDigit())
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                        Text("最大値は今回の試験条件で観測した値です。3DGS対応、サーバー側制限の有無は判定できません。CSVは各ステップ完了時に端末へ保存されます。")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 GroupBox("詳細診断ログ（端末内保存）") {

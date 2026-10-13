@@ -25,10 +25,12 @@ struct FlyoverMapView: UIViewRepresentable {
         context.coordinator.applyCamera(model, to: map)
         context.coordinator.lastRevision = model.revision
         context.coordinator.lastMode = model.mode
+        AutoDiagnosticController.shared.register(map)
         return map
     }
 
     func updateUIView(_ map: MKMapView, context: Context) {
+        if AutoDiagnosticController.shared.isRunning { return }
         let coordinator = context.coordinator
         if coordinator.lastMode != model.mode {
             coordinator.setMode(model.mode, on: map)
@@ -40,6 +42,10 @@ struct FlyoverMapView: UIViewRepresentable {
             coordinator.lastRevision = model.revision
         }
         // Reading the observed camera must NOT continually reset the viewport.
+    }
+
+    static func dismantleUIView(_ uiView: MKMapView, coordinator: Coordinator) {
+        AutoDiagnosticController.shared.unregister(uiView)
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
@@ -138,7 +144,7 @@ struct FlyoverMapView: UIViewRepresentable {
             let longitude = camera.centerCoordinate.longitude
             if force || now.timeIntervalSince(lastCameraLoggedAt) >= 1 {
                 lastCameraLoggedAt = now
-                let requested = model?.requestedPitch ?? pitch
+                let requested = AutoDiagnosticController.shared.currentRequestedPitch ?? model?.requestedPitch ?? pitch
                 diagnostics.log("CAMERA", "CAMERA_READBACK", fields: [
                     "pitch": "\(pitch)", "requestedPitch": "\(requested)",
                     "pitchDelta": "\(requested - pitch)",
